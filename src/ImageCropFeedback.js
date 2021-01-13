@@ -1,4 +1,43 @@
-import React, { useRef, useEffect, useLayoutEffect, forwardRef } from 'react';
+import React, { useRef, useEffect, forwardRef } from 'react';
+
+/**
+ *
+ *
+ * @param {Function} onAreaSelect - The callback for area selected event
+ * @param {Function} setStartCropping - The callback to set start cropping flag
+ * @param {HTMLCanvasElement} canvasContext - Convas context
+ */
+const handleClick = (onAreaSelect, setStartCropping, canvasContext) => (event) => {
+  onAreaSelect({ x: event.clientX, y: event.clientY });
+  setStartCropping((state) => !state);
+};
+
+/**
+ *
+ *
+ * @param {Function} onAreaSelect - The callback for area selected event
+ * @param {boolean} startCropping - The flag for start cropping
+ */
+const handleMouseMove = (onAreaSelect, startCropping) => (event) => {
+  if (startCropping) {
+    onAreaSelect({ x: event.clientX, y: event.clientY });
+  }
+};
+/**
+ *
+ *
+ * @param {HTMLCanvasElement} canvasContext - Convas context
+ * @param {Object} coords - x and y coordinates to draw a line
+ */
+const drawLine = (canvasContext) => (coords) => {
+  const { x0, y0, x1, y1 } = coords;
+  canvasContext.beginPath();
+  canvasContext.moveTo(x0, y0);
+  canvasContext.lineTo(x1, y1);
+  canvasContext.strokeStyle = 'white';
+  canvasContext.lineWidth = 2;
+  canvasContext.stroke();
+};
 
 export default function ImageCropFeedback({
   imageUrl,
@@ -14,9 +53,8 @@ export default function ImageCropFeedback({
   const canvasRef = useRef();
   const imageRef = useRef();
   const contextRef = useRef();
-  const initialRun = useRef(true);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     const currentCanvas = canvasRef.current;
     const currentImage = imageRef.current;
 
@@ -28,18 +66,18 @@ export default function ImageCropFeedback({
     };
   }, [imageUrl]);
 
+  // This block is responsible for drawing/clearing out the crop area
   useEffect(() => {
-    if (startCropping || initialRun.current) {
-      initialRun.current = false;
-      const drawLineCtx = drawLine(contextRef.current);
-      contextRef.current.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-      contextRef.current.drawImage(imageRef.current, 0, 0);
-      drawLineCtx(top);
-      drawLineCtx(left);
-      drawLineCtx(right);
-      drawLineCtx(bottom);
-    }
-  }, [top, left, right, bottom, startCropping]);
+    const drawLineWithContext = drawLine(contextRef.current);
+
+    contextRef.current.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height); // This is to clear out existings lines
+    contextRef.current.drawImage(imageRef.current, 0, 0); // This is required as we are clearing out the canvas
+
+    drawLineWithContext(top);
+    drawLineWithContext(left);
+    drawLineWithContext(right);
+    drawLineWithContext(bottom);
+  }, [top, left, right, bottom]);
 
   return (
     <div>
@@ -48,7 +86,7 @@ export default function ImageCropFeedback({
         onMouseMove={handleMouseMove(onAreaSelect, startCropping)}
         ref={canvasRef}
       ></canvas>
-      <button style={{ width: 200, height: 50, marginTop: -10 }} onClick={handleCrop}>
+      <button style={{ width: 200, height: 50 }} onClick={handleCrop}>
         Crop
       </button>
       <Image ref={imageRef} url={imageUrl} style={{ opacity: 0 }} />
@@ -56,26 +94,4 @@ export default function ImageCropFeedback({
   );
 }
 
-const handleClick = (onAreaSelect, setStartCropping, ctx) => (event) => {
-  setStartCropping((state) => !state);
-  onAreaSelect({ x: event.clientX, y: event.clientY });
-};
-
-const handleMouseMove = (onAreaSelect, startCropping) => (event) => {
-  if (startCropping) {
-    onAreaSelect({ x: event.clientX, y: event.clientY });
-  }
-};
-
-const drawLine = (canvasContext) => (coords, style = {}) => {
-  const { x0, y0, x1, y1 } = coords;
-  const { color = 'white', width = 2 } = style;
-  canvasContext.beginPath();
-  canvasContext.moveTo(x0, y0);
-  canvasContext.lineTo(x1, y1);
-  canvasContext.strokeStyle = color;
-  canvasContext.lineWidth = width;
-  canvasContext.stroke();
-};
-
-const Image = forwardRef(({ url, ...other }, ref) => <img src={url} {...other} ref={ref} alt='Kitten' />);
+const Image = forwardRef(({ url, ...other }, ref) => <img src={url} {...other} ref={ref} alt='kitten' />);
