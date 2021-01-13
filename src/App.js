@@ -24,7 +24,7 @@ function App() {
     const height = area.left.y1 - area.left.y0;
     const canvas = document.createElement('canvas');
     canvas.height = height;
-    canvas.height = width;
+    canvas.width = width;
     const ctx = canvas.getContext('2d');
     let image = new Image();
     image.src = url;
