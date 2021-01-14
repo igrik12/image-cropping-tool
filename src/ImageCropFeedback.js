@@ -1,26 +1,29 @@
-import React, { useRef, useEffect, forwardRef } from 'react';
+import React, { useRef, useEffect, forwardRef, useState } from 'react';
 
 /**
  *
  *
  * @param {Function} onAreaSelect - The callback for area selected event
- * @param {Function} setStartCropping - The callback to set start cropping flag
- * @param {HTMLCanvasElement} canvasContext - Convas context
  */
-const handleClick = (onAreaSelect, setStartCropping, canvasContext) => (event) => {
-  onAreaSelect({ x: event.clientX, y: event.clientY });
-  setStartCropping((state) => !state);
+const handleClick = (onAreaSelect, setStartCrop, startCrop, setTopLeft, topLeft) => (event) => {
+  if (!startCrop) {
+    setTopLeft({ top: event.clientX, left: event.clientY });
+    onAreaSelect({ top: event.clientX, left: event.clientY, bottom: event.clientX, right: event.clientY });
+    setStartCrop(true);
+  } else {
+    onAreaSelect({ top: topLeft.top, left: topLeft.left, bottom: event.clientX, right: event.clientY });
+    setStartCrop(false);
+  }
 };
 
 /**
  *
  *
  * @param {Function} onAreaSelect - The callback for area selected event
- * @param {boolean} startCropping - The flag for start cropping
  */
-const handleMouseMove = (onAreaSelect, startCropping) => (event) => {
-  if (startCropping) {
-    onAreaSelect({ x: event.clientX, y: event.clientY });
+const handleMouseMove = (onAreaSelect, startCrop, topLeft) => (event) => {
+  if (startCrop) {
+    onAreaSelect({ top: topLeft.top, left: topLeft.left, bottom: event.clientX, right: event.clientY });
   }
 };
 /**
@@ -39,20 +42,12 @@ const drawLine = (canvasContext) => (coords) => {
   canvasContext.stroke();
 };
 
-export default function ImageCropFeedback({
-  imageUrl,
-  top,
-  left,
-  right,
-  bottom,
-  onAreaSelect = () => {},
-  startCropping,
-  setStartCropping,
-  handleCrop,
-}) {
+export default function ImageCropFeedback({ imageUrl, top, left, right, bottom, onAreaSelect = () => {} }) {
   const canvasRef = useRef();
   const imageRef = useRef();
   const contextRef = useRef();
+  const [startCrop, setStartCrop] = useState(false);
+  const [topLeft, setTopLeft] = useState({ top, left });
 
   useEffect(() => {
     const currentCanvas = canvasRef.current;
@@ -73,22 +68,23 @@ export default function ImageCropFeedback({
     contextRef.current.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height); // This is to clear out existings lines
     contextRef.current.drawImage(imageRef.current, 0, 0); // This is required as we are clearing out the canvas
 
-    drawLineWithContext(top);
-    drawLineWithContext(left);
-    drawLineWithContext(right);
-    drawLineWithContext(bottom);
-  }, [top, left, right, bottom]);
+    const topLine = { x0: top, y0: left, x1: bottom, y1: left };
+    const leftLine = { x0: top, y0: left, x1: top, y1: right };
+    const rightLine = { x0: bottom, y0: left, x1: bottom, y1: right };
+    const bottomLine = { x0: top, y0: right, x1: bottom, y1: right };
 
+    drawLineWithContext(topLine);
+    drawLineWithContext(leftLine);
+    drawLineWithContext(rightLine);
+    drawLineWithContext(bottomLine);
+  }, [top, left, right, bottom]);
   return (
     <div>
       <canvas
-        onClick={handleClick(onAreaSelect, setStartCropping)}
-        onMouseMove={handleMouseMove(onAreaSelect, startCropping)}
+        onClick={handleClick(onAreaSelect, setStartCrop, startCrop, setTopLeft, topLeft)}
+        onMouseMove={handleMouseMove(onAreaSelect, startCrop, topLeft)}
         ref={canvasRef}
       ></canvas>
-      <button style={{ width: 200, height: 50 }} onClick={handleCrop}>
-        Crop
-      </button>
       <Image ref={imageRef} url={imageUrl} style={{ opacity: 0 }} />
     </div>
   );
